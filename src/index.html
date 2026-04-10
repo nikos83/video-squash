@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:" />
+  <title>VideoSquash</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Title bar drag area -->
+    <div class="titlebar">
+      <span class="titlebar-title">VideoSquash</span>
+    </div>
+
+    <div class="layout">
+      <!-- Left: Dropzone + Queue -->
+      <div class="main-panel">
+        <div id="dropzone" class="dropzone">
+          <div class="dropzone-inner">
+            <div class="dropzone-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+            </div>
+            <p class="dropzone-text">Przeciągnij pliki wideo tutaj</p>
+            <p class="dropzone-sub">MP4, MOV, MKV, AVI, WEBM</p>
+            <button class="btn btn-ghost" id="btn-browse">lub wybierz pliki</button>
+          </div>
+        </div>
+
+        <div id="queue-section" class="queue-section hidden">
+          <div class="queue-header">
+            <span id="queue-count" class="queue-count">0 plików</span>
+            <div class="queue-actions">
+              <button class="btn btn-ghost btn-sm" id="btn-add-more">+ Dodaj więcej</button>
+              <button class="btn btn-ghost btn-sm btn-danger" id="btn-clear-all">Wyczyść</button>
+            </div>
+          </div>
+          <div id="queue-list" class="queue-list"></div>
+
+          <!-- Batch summary -->
+          <div id="batch-summary" class="batch-summary hidden">
+            <div class="summary-row">
+              <span class="summary-label">Łączna oszczędność:</span>
+              <span id="summary-saved" class="summary-value accent"></span>
+            </div>
+            <div class="summary-row">
+              <span class="summary-label">Przed / Po:</span>
+              <span id="summary-sizes" class="summary-value"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Settings + Action -->
+      <div class="sidebar">
+        <div class="sidebar-inner">
+          <h3 class="sidebar-title">Ustawienia</h3>
+
+          <div id="basic-settings-panel">
+          <!-- Quick presets -->
+          <div class="setting-group">
+            <label class="setting-label">Preset</label>
+            <div class="preset-grid" id="preset-grid">
+              <button class="preset-btn" data-preset="email">
+                <span class="preset-icon">📧</span>
+                <span class="preset-name">Email</span>
+              </button>
+              <button class="preset-btn" data-preset="youtube">
+                <span class="preset-icon">🎬</span>
+                <span class="preset-name">YouTube</span>
+              </button>
+              <button class="preset-btn" data-preset="archive">
+                <span class="preset-icon">💾</span>
+                <span class="preset-name">Archiwum</span>
+              </button>
+              <button class="preset-btn active" data-preset="mobile">
+                <span class="preset-icon">📱</span>
+                <span class="preset-name">Mobile</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Quality (CRF) -->
+          <div class="setting-group">
+            <label class="setting-label">Jakość</label>
+            <div class="radio-group" id="quality-group">
+              <label class="radio-option">
+                <input type="radio" name="quality" value="18" />
+                <span class="radio-label"><span class="radio-icon">🏆</span> Wysoka</span>
+              </label>
+              <label class="radio-option">
+                <input type="radio" name="quality" value="23" />
+                <span class="radio-label"><span class="radio-icon">⚖️</span> Średnia</span>
+              </label>
+              <label class="radio-option">
+                <input type="radio" name="quality" value="30" />
+                <span class="radio-label"><span class="radio-icon">📦</span> Niska</span>
+              </label>
+              <label class="radio-option">
+                <input type="radio" name="quality" value="35" />
+                <span class="radio-label"><span class="radio-icon">💾</span> Bardzo niska</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Resolution -->
+          <div class="setting-group">
+            <label class="setting-label">Rozdzielczość</label>
+            <div class="radio-group" id="resolution-group">
+              <label class="radio-option">
+                <input type="radio" name="resolution" value="original" />
+                <span class="radio-label">Oryginał</span>
+              </label>
+              <label class="radio-option">
+                <input type="radio" name="resolution" value="1080" />
+                <span class="radio-label">1080p</span>
+              </label>
+              <label class="radio-option">
+                <input type="radio" name="resolution" value="720" />
+                <span class="radio-label">720p</span>
+              </label>
+              <label class="radio-option">
+                <input type="radio" name="resolution" value="480" />
+                <span class="radio-label">480p</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Codec -->
+          <div class="setting-group">
+            <label class="setting-label">Kodek</label>
+            <div class="radio-group" id="codec-group">
+              <label class="radio-option">
+                <input type="radio" name="codec" value="h264" />
+                <span class="radio-label">H.264 <span class="radio-hint">max kompatybilność</span></span>
+              </label>
+              <label class="radio-option">
+                <input type="radio" name="codec" value="h265" />
+                <span class="radio-label">H.265 <span class="radio-hint">~40% mniejszy</span></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Speed preset -->
+          <div class="setting-group">
+            <label class="setting-label">Szybkość</label>
+            <div class="segmented-control" id="speed-control">
+              <button class="seg-btn" data-value="fast">Fast</button>
+              <button class="seg-btn active" data-value="medium">Medium</button>
+              <button class="seg-btn" data-value="slow">Slow</button>
+            </div>
+          </div>
+
+          <!-- Output folder -->
+          <div class="setting-group">
+            <label class="setting-label">Folder wyjściowy</label>
+            <div class="folder-picker">
+              <span id="output-folder-label" class="folder-label">Obok oryginału</span>
+              <button class="btn btn-ghost btn-sm" id="btn-select-folder">Zmień</button>
+            </div>
+            <button class="btn btn-ghost btn-xs hidden" id="btn-reset-folder">Resetuj do domyślnego</button>
+          </div>
+          </div><!-- /basic-settings-panel -->
+
+          <!-- Profiles -->
+          <div class="setting-group">
+            <label class="setting-label">Profile ustawień</label>
+            <div class="profile-save-row">
+              <input type="text" id="profile-name-input" class="text-input" placeholder="Nazwa profilu…" maxlength="32" spellcheck="false" />
+              <button class="btn btn-ghost btn-sm" id="btn-save-profile">Zapisz</button>
+            </div>
+            <div id="profile-list" class="profile-list"></div>
+          </div>
+
+          <!-- Advanced toggle -->
+          <button class="advanced-toggle" id="advanced-toggle">
+            <span>Zaawansowane</span>
+            <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </button>
+
+          <!-- Advanced panel -->
+          <div id="advanced-panel" class="advanced-panel hidden">
+
+            <!-- CRF manual -->
+            <div class="setting-group">
+              <label class="setting-label">
+                CRF (jakość)
+                <span id="crf-value-display" class="setting-label-value">23</span>
+              </label>
+              <input type="range" id="crf-slider" class="slider" min="0" max="51" value="23" step="1" />
+              <div class="slider-hints">
+                <span>0 — bezstratne</span>
+                <span>51 — najgorsza</span>
+              </div>
+            </div>
+
+            <!-- Speed preset full -->
+            <div class="setting-group">
+              <label class="setting-label">Preset szybkości</label>
+              <select id="speed-select" class="select">
+                <option value="ultrafast">ultrafast</option>
+                <option value="superfast">superfast</option>
+                <option value="veryfast">veryfast</option>
+                <option value="faster">faster</option>
+                <option value="fast">fast</option>
+                <option value="medium" selected>medium</option>
+                <option value="slow">slow</option>
+                <option value="slower">slower</option>
+                <option value="veryslow">veryslow</option>
+              </select>
+            </div>
+
+            <!-- Video codec extended -->
+            <div class="setting-group">
+              <label class="setting-label">Kodek wideo</label>
+              <select id="codec-select" class="select">
+                <option value="h264">H.264 (libx264)</option>
+                <option value="h265">H.265 (libx265)</option>
+                <option value="vp9">VP9 (libvpx-vp9)</option>
+              </select>
+            </div>
+
+            <!-- FPS limit -->
+            <div class="setting-group">
+              <label class="setting-label">Limit klatek (FPS)</label>
+              <select id="fps-select" class="select">
+                <option value="original">Oryginał</option>
+                <option value="60">60 fps</option>
+                <option value="30">30 fps</option>
+                <option value="25">25 fps</option>
+                <option value="24">24 fps</option>
+              </select>
+            </div>
+
+            <!-- Audio codec -->
+            <div class="setting-group">
+              <label class="setting-label">Kodek audio</label>
+              <select id="audio-codec-select" class="select">
+                <option value="aac">AAC</option>
+                <option value="mp3">MP3 (libmp3lame)</option>
+                <option value="opus">Opus</option>
+                <option value="copy">Kopiuj (bez re-encode)</option>
+                <option value="none">Brak audio</option>
+              </select>
+            </div>
+
+            <!-- Audio bitrate -->
+            <div class="setting-group" id="audio-bitrate-group">
+              <label class="setting-label">Bitrate audio</label>
+              <select id="audio-bitrate-select" class="select">
+                <option value="64k">64 kbps</option>
+                <option value="96k" selected>96 kbps</option>
+                <option value="128k">128 kbps</option>
+                <option value="192k">192 kbps</option>
+                <option value="256k">256 kbps</option>
+                <option value="320k">320 kbps</option>
+              </select>
+            </div>
+
+            <!-- Custom ffmpeg args -->
+            <div class="setting-group">
+              <label class="setting-label">
+                Własne flagi ffmpeg
+                <span class="setting-label-hint">opcjonalne</span>
+              </label>
+              <input type="text" id="custom-args" class="text-input" placeholder="-vf hflip -metadata title=test" spellcheck="false" />
+            </div>
+
+            <!-- ffmpeg command preview -->
+            <div class="setting-group">
+              <label class="setting-label">Podgląd komendy</label>
+              <div id="cmd-preview" class="cmd-preview">ffmpeg …</div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="action-area">
+          <button class="btn btn-primary btn-lg" id="btn-compress" disabled>
+            Kompresuj
+          </button>
+          <button class="btn btn-danger btn-lg hidden" id="btn-cancel">
+            Anuluj
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden input for file picking -->
+  <input type="file" id="file-input" multiple accept="video/*,.mov,.mkv,.avi,.webm,.mp4" style="display:none" />
+
+  <script src="renderer.js"></script>
+</body>
+</html>
