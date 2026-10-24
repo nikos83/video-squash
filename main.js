@@ -21,6 +21,9 @@ function createWindow() {
   });
 
   mainWindow.loadFile(path.join(__dirname, 'src', 'index.html'));
+  mainWindow.webContents.on('render-process-gone', (_e, details) => {
+    console.error('Renderer gone:', details);
+  });
 }
 
 app.whenReady().then(() => {
@@ -138,6 +141,10 @@ function buildOutputTag(options) {
 }
 
 async function processQueue(sender, files, options) {
+  // Window closed or renderer crashed mid-queue: stop ffmpeg instead of sending into a dead webContents
+  const send = (channel, payload) => { if (!sender.isDestroyed()) sender.send(channel, payload); };
+  sender.once('destroyed', () => compressor.cancel());
+
   for (const file of files) {
     if (compressor.isCancelled()) break;
 
@@ -147,7 +154,7 @@ async function processQueue(sender, files, options) {
     const tag = buildOutputTag(options);
     const outputPath = uniquePath(dir, `${base}_${tag}`, '.mp4');
 
-    sender.send('compress:progress', { id: file.id, percent: 0, status: 'compressing' });
+    send('compress:progress', { id: file.id, percent: 0, status: 'compressing' });
 
     try {
       const result = await compressor.compress({
@@ -155,21 +162,21 @@ async function processQueue(sender, files, options) {
         output: outputPath,
         ...options,
         onProgress: (percent) => {
-          sender.send('compress:progress', { id: file.id, percent, status: 'compressing' });
+          send('compress:progress', { id: file.id, percent, status: 'compressing' });
         },
       });
 
       const originalSize = fs.statSync(file.path).size;
       const compressedSize = fs.statSync(outputPath).size;
 
-      sender.send('compress:done', {
+      send('compress:done', {
         id: file.id,
         outputPath,
         originalSize,
         compressedSize,
       });
     } catch (err) {
-      sender.send('compress:error', { id: file.id, error: err.message });
+      send('compress:error', { id: file.id, error: err.message });
     }
   }
 }
