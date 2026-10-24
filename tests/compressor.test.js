@@ -40,7 +40,7 @@ mockFfmpeg.ffprobe        = jest.fn();
 
 jest.mock('fluent-ffmpeg',   () => mockFfmpeg);
 jest.mock('ffmpeg-static',   () => '/mock/ffmpeg');
-jest.mock('ffprobe-static',  () => ({ path: '/mock/ffprobe' }));
+jest.mock('@ffprobe-installer/ffprobe',  () => ({ path: '/mock/ffprobe' }));
 
 // Load module AFTER mocks are set up
 const compressor = require('../lib/compressor');
